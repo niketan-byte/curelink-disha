@@ -42,18 +42,25 @@ To test WhatsApp:
 - **LLM**: Pluggable (Gemini / OpenAI / Azure OpenAI) via factory + env. **Hinglish** support included.
 - **WebSocket**: `/ws/chat/{user_id}` for typing indicator.
 
-### User Flow (Web/WhatsApp)
-1) New user → onboarding: name → gender → age → goal (includes “Other” for custom goals) → weight/height if relevant.  
-2) Messages persisted; cursor-based pagination for history.  
-3) Context built with profile + memories + matched protocols + sliding window of recent chat.  
-4) LLM generates reply; CTAs rendered as quick replies (web) or interactive buttons (WhatsApp).  
-5) Long-term memories auto-extracted for personalization.
+## LLM & Prompting Strategy
+- **Providers**: Supports Google Gemini (default), OpenAI, and Azure OpenAI via a Factory pattern.
+- **System Prompt**: A carefully crafted persona (Disha) that balances professional health guidance with warm, Hinglish-friendly WhatsApp communication.
+- **Context Construction**:
+  - **Dynamic Profile**: User data (age, weight, etc.) is injected into the system prompt to prevent redundant questions.
+  - **Mem0-inspired Memory**: Facts like "allergic to peanuts" or "prefers evening workouts" are extracted and prioritized in the prompt.
+  - **Protocol Injection**: Relevant health guidelines are injected only when keywords match, keeping the prompt clean.
+  - **Sliding Window**: History is token-capped to maintain speed and cost-efficiency.
 
-### Trade-offs vs PDF guidelines
-- Database: Used MongoDB (flexible schema for evolving memories) instead of Postgres/SQLite. Rationale: faster iteration for document-like memories; acknowledge deviation from PDF preference.  
-- Redis: Not added; can be introduced for protocol cache later.  
-- Embeddings: Keyword/RAG-light today; semantic vector search is a future enhancement.  
-- Streaming: Not implemented; responses returned whole for simplicity.
+## Design Decisions
+1. **MongoDB over SQL**: Chosen for the flexible `User` profile and `Memory` schema. As the bot learns more about a user, the data structure evolves; MongoDB handles this without complex migrations.
+2. **Greedy Onboarding**: Instead of a rigid step-by-step form, the bot uses LLM-powered extraction to "catch" multiple details in one message (e.g., "I'm Niketan, 28, looking to lose weight").
+3. **Safety Guardrails**: A dedicated emergency detector runs *before* the LLM to catch keywords like "chest pain" or "suicide" and provides immediate, non-AI medical instructions.
+
+## Trade-offs & "If I had more time..."
+- **Redis**: Currently using MongoDB for everything. With more time, I'd add Redis for session caching and rate-limit tracking.
+- **Vector Search**: Using keyword-based protocol matching. For a larger knowledge base, I would implement ChromaDB/Pinecone for semantic RAG.
+- **Streaming**: Responses are delivered as a single block. Implementing Server-Sent Events (SSE) would improve the "real-time" feel on the web UI.
+- **Automated Testing**: While manually tested, I'd add a full suite of integration tests for the `ChatOrchestrator` using `pytest-asyncio`.
 
 ---
 
