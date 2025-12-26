@@ -7,8 +7,9 @@ Production-ready AI health coach with a WhatsApp-style chat, long-term memory, h
 ---
 
 ## Live Deployment
-- Backend (FastAPI): `https://curelink-disha.onrender.com`
-- Frontend: `https://curelink-disha-frontend.onrender.com` (Update with your actual frontend URL)
+- Backend (FastAPI): `https://curelink-disha.onrender.com`  
+  *(Note: Hosted on Render Free Tier; may take ~30s to "wake up" after inactivity)*
+- Frontend: `https://curelink-disha-frontend.onrender.com`
 - WhatsApp Webhook: `https://curelink-disha.onrender.com/api/webhooks/whatsapp`
 
 To test WhatsApp:
@@ -20,12 +21,29 @@ To test WhatsApp:
 ---
 
 ## Quick Start (Local)
-1) Prereqs: Docker + Docker Compose, Python 3.11+.  
-2) Backend env: `cd backend && cp .env.example .env` (fill LLM keys, Mongo URI, WA keys).  
-3) Run stack: `docker-compose up -d` (starts Mongo + FastAPI).  
-4) Seed protocols: `cd backend && python scripts/seed_db.py`.  
-5) Frontend: `cd frontend && python -m http.server 3000` → open `http://localhost:3000`.  
-6) Swagger: `http://localhost:8000/docs` | Health: `http://localhost:8000/health`.
+1. **Prereqs**: Python 3.11+ and a local MongoDB instance.
+2. **Environment**:
+   ```bash
+   cd backend
+   python -m venv venv
+   source venv/bin/activate  # or venv\Scripts\activate on Windows
+   pip install -r requirements.txt
+   cp .env.example .env  # Fill in LLM keys and local MONGODB_URL
+   ```
+3. **Run Backend**:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+4. **Seed Database**:
+   ```bash
+   python scripts/seed_db.py
+   ```
+5. **Run Frontend**:
+   ```bash
+   cd ../frontend
+   python -m http.server 3000
+   ```
+   Open `http://localhost:3000` in your browser.
 
 ---
 
