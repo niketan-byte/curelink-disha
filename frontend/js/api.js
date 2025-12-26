@@ -6,7 +6,7 @@ const API = {
     // Base URL - change this for production
     baseUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? 'http://localhost:8000'
-        : '', // Will be set to production URL
+        : 'https://curelink-disha.onrender.com',
 
     /**
      * Set the base URL (for production)
