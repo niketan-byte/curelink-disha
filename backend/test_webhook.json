@@ -1,0 +1,39 @@
+{
+    "object": "whatsapp_business_account",
+    "entry": [
+        {
+            "id": "109251325371239",
+            "changes": [
+                {
+                    "value": {
+                        "messaging_product": "whatsapp",
+                        "metadata": {
+                            "display_phone_number": "15551752863",
+                            "phone_number_id": "100609346377852"
+                        },
+                        "contacts": [
+                            {
+                                "profile": {
+                                    "name": "Niketan"
+                                },
+                                "wa_id": "16315551234"
+                            }
+                        ],
+                        "messages": [
+                            {
+                                "from": "16315551234",
+                                "id": "wamid.HBgLMTYzMTU1NTEyMzQVAgASGBQzQjEwQ0E5QzEyMzQ1Njc4OTAxAA==",
+                                "timestamp": "1703675000",
+                                "text": {
+                                    "body": "Hi"
+                                },
+                                "type": "text"
+                            }
+                        ]
+                    },
+                    "field": "messages"
+                }
+            ]
+        }
+    ]
+}
