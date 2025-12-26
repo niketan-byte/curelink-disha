@@ -7,9 +7,9 @@ Production-ready AI health coach with a WhatsApp-style chat, long-term memory, h
 ---
 
 ## Live Deployment
-- Backend (FastAPI): `https://<your-backend-domain>` (update after deploy)
-- Frontend: `https://<your-frontend-domain>` (update after deploy)
-- WhatsApp Webhook: `https://<your-backend-domain>/api/webhooks/whatsapp`
+- Backend (FastAPI): `https://curelink-disha.onrender.com`
+- Frontend: `https://curelink-disha-frontend.onrender.com` (Update with your actual frontend URL)
+- WhatsApp Webhook: `https://curelink-disha.onrender.com/api/webhooks/whatsapp`
 
 To test WhatsApp:
 1) Add your phone to the allowed/test list in Meta (since the number is not yet published).  
@@ -32,14 +32,14 @@ To test WhatsApp:
 ## Architecture (High Level)
 - **Frontend**: Vanilla JS, WhatsApp-like UI, infinite scroll, typing indicator, quick replies, voice input.  
 - **Backend (FastAPI)**:  
-  - `ChatOrchestrator`: orchestrates onboarding, memory, protocol match, LLM calls.  
+  - `ChatOrchestrator`: orchestrates onboarding, memory, protocol match, LLM calls. Includes **Emergency Detection** (detects medical emergencies and redirects to hospital/ambulance).
   - `ContextBuilder`: token-aware prompt assembly (profile, memories, protocols, sliding window).  
   - `MemoryManager`: Mem0-inspired long-term facts extraction.  
   - `ProtocolMatcher`: keyword/RAG-light health protocols.  
   - `WhatsApp webhook`: inbound via `/api/webhooks/whatsapp`; replies via Graph API with interactive buttons.  
   - `RateLimiter` and `ErrorHandler` middleware.  
 - **Data**: MongoDB (user, messages, memories, protocols).  
-- **LLM**: Pluggable (Gemini / OpenAI / Azure OpenAI) via factory + env.  
+- **LLM**: Pluggable (Gemini / OpenAI / Azure OpenAI) via factory + env. **Hinglish** support included.
 - **WebSocket**: `/ws/chat/{user_id}` for typing indicator.
 
 ### User Flow (Web/WhatsApp)
