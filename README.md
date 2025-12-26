@@ -1,130 +1,149 @@
-# Disha - Mini AI Health Coach 🩺🤖
+# Disha – Mini AI Health Coach
 
-Disha is a production-grade AI Health Coach designed like a WhatsApp chat interface. It provides personalized health advice, remembers user facts over long periods (Mem0-inspired), and follows common health protocols.
+Production-ready AI health coach with a WhatsApp-style chat, long-term memory, health protocol matching, and real WhatsApp Cloud API integration. Built for the Curelink Backend Engineer assignment.
 
-Built for the Curelink Backend Engineer assignment.
-
-![Disha Chat UI](frontend/assets/disha-avatar.svg) <!-- Note: Replace with actual screenshot if available -->
-
-## ✨ Key Features
-
-- **WhatsApp-style UI**: Familiar, mobile-first chat interface with autoscrolling, typing indicators, and message timestamps.
-- **Smart Context Management**: Handles context overflow using a sliding window strategy and token-aware context assembly.
-- **Multi-Provider LLM Support**: Configurable to use **Google Gemini 1.5**, **OpenAI GPT-4o**, or **Azure OpenAI**.
-- **Long-Term Memory (Mem0-inspired)**: Automatically extracts and stores key facts about the user (conditions, goals, preferences) to provide personalized advice in future sessions.
-- **Health Protocol Matching**: Maps user queries to specific health guidelines (Fever, PCOS, Diabetes, etc.) using a RAG-light keyword matching system.
-- **Conversational Onboarding**: A friendly 4-step flow to get to know the user before diving into coaching.
-- **Robust Backend**: Built with FastAPI, MongoDB (Motor), and Pydantic for high performance and type safety.
-- **Pagination**: Efficient cursor-based infinite scrolling for message history.
+> Repo is **public** as requested. A real WhatsApp bot is configured; testing requires adding allowed recipient numbers (not published to marketplace).
 
 ---
 
-## 🚀 Quick Start
+## Live Deployment
+- Backend (FastAPI): `https://<your-backend-domain>` (update after deploy)
+- Frontend: `https://<your-frontend-domain>` (update after deploy)
+- WhatsApp Webhook: `https://<your-backend-domain>/api/webhooks/whatsapp`
 
-### 1. Prerequisites
-- Docker & Docker Compose
-- Python 3.11+ (if running locally without Docker)
-- API Key for Gemini, OpenAI, or Azure OpenAI
+To test WhatsApp:
+1) Add your phone to the allowed/test list in Meta (since the number is not yet published).  
+2) Send “Hi” to the configured WhatsApp number.  
+3) Webhook verify token is in env (`WA_VERIFY_TOKEN`), and the bot uses the permanent access token from env.  
+4) CTAs are rendered as WhatsApp interactive buttons; custom goals supported via “Other”.
 
-### 2. Setup Environment
-Copy the `.env.example` to `.env` in the `backend` folder and fill in your credentials.
+---
 
-```bash
-cd backend
-cp .env.example .env
-# Edit .env with your LLM API keys
+## Quick Start (Local)
+1) Prereqs: Docker + Docker Compose, Python 3.11+.  
+2) Backend env: `cd backend && cp .env.example .env` (fill LLM keys, Mongo URI, WA keys).  
+3) Run stack: `docker-compose up -d` (starts Mongo + FastAPI).  
+4) Seed protocols: `cd backend && python scripts/seed_db.py`.  
+5) Frontend: `cd frontend && python -m http.server 3000` → open `http://localhost:3000`.  
+6) Swagger: `http://localhost:8000/docs` | Health: `http://localhost:8000/health`.
+
+---
+
+## Architecture (High Level)
+- **Frontend**: Vanilla JS, WhatsApp-like UI, infinite scroll, typing indicator, quick replies, voice input.  
+- **Backend (FastAPI)**:  
+  - `ChatOrchestrator`: orchestrates onboarding, memory, protocol match, LLM calls.  
+  - `ContextBuilder`: token-aware prompt assembly (profile, memories, protocols, sliding window).  
+  - `MemoryManager`: Mem0-inspired long-term facts extraction.  
+  - `ProtocolMatcher`: keyword/RAG-light health protocols.  
+  - `WhatsApp webhook`: inbound via `/api/webhooks/whatsapp`; replies via Graph API with interactive buttons.  
+  - `RateLimiter` and `ErrorHandler` middleware.  
+- **Data**: MongoDB (user, messages, memories, protocols).  
+- **LLM**: Pluggable (Gemini / OpenAI / Azure OpenAI) via factory + env.  
+- **WebSocket**: `/ws/chat/{user_id}` for typing indicator.
+
+### User Flow (Web/WhatsApp)
+1) New user → onboarding: name → gender → age → goal (includes “Other” for custom goals) → weight/height if relevant.  
+2) Messages persisted; cursor-based pagination for history.  
+3) Context built with profile + memories + matched protocols + sliding window of recent chat.  
+4) LLM generates reply; CTAs rendered as quick replies (web) or interactive buttons (WhatsApp).  
+5) Long-term memories auto-extracted for personalization.
+
+### Trade-offs vs PDF guidelines
+- Database: Used MongoDB (flexible schema for evolving memories) instead of Postgres/SQLite. Rationale: faster iteration for document-like memories; acknowledge deviation from PDF preference.  
+- Redis: Not added; can be introduced for protocol cache later.  
+- Embeddings: Keyword/RAG-light today; semantic vector search is a future enhancement.  
+- Streaming: Not implemented; responses returned whole for simplicity.
+
+---
+
+## API Surface (Core Endpoints)
+- `POST /api/users` – create session user.  
+- `GET /api/users/{user_id}` – profile/onboarding state.  
+- `POST /api/messages` – send message, get AI reply.  
+- `GET /api/messages` – cursor-based history (`before` cursor).  
+- `GET /api/messages/latest` – latest batch for initial load.  
+- `GET /health` – health check.  
+- `WS /ws/chat/{user_id}` – typing indicator.  
+- `GET|POST /api/webhooks/whatsapp` – Meta verify + inbound messages.
+
+---
+
+## Repo Structure
+```
+curelink/
+├── backend/
+│   ├── app/
+│   │   ├── main.py               # FastAPI app, middleware, routers
+│   │   ├── config.py             # Pydantic settings
+│   │   ├── database.py           # Mongo (Motor) connection
+│   │   ├── api/routes/           # chat, user, health, websocket, whatsapp_webhook
+│   │   ├── services/             # chat_orchestrator, context_builder, memory_manager, protocol_matcher, onboarding, whatsapp
+│   │   ├── models/               # user, message, memory, protocol
+│   │   ├── schemas/              # Pydantic I/O schemas
+│   │   ├── middleware/           # rate limiter, error handler
+│   │   └── utils/                # token counter, validators
+│   ├── scripts/                  # seed_db, reset_user, send_outbound, test_whatsapp, fix_subscription
+│   ├── seeds/protocols.json
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── .env.example
+├── frontend/
+│   ├── index.html
+│   ├── css/ (styles, chat, animations)
+│   ├── js/  (app, api, chat, websocket, scroll, utils)
+│   └── assets/ disha-avatar.svg
+└── README.md
 ```
 
-### 3. Run with Docker (Recommended)
-This will start MongoDB and the FastAPI backend.
+---
 
-```bash
-docker-compose up -d
-```
-
-### 4. Seed Protocol Data
-Populate the database with initial health guidelines:
-
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
-python scripts/seed_db.py
-```
-
-### 5. Launch Frontend
-Since the frontend is Vanilla JS/HTML, you can serve it with any static server.
-
-**Using Python:**
-```bash
-cd frontend
-python -m http.server 3000
-```
-Then open `http://localhost:3000` in your browser.
+## Environment Variables (backend/.env.example)
+- `MONGODB_URL` (Atlas URI)  
+- `DATABASE_NAME`  
+- `LLM_PROVIDER` = azure|openai|gemini  
+- `AZURE_OPENAI_*` or `OPENAI_API_KEY` or `GEMINI_API_KEY`  
+- `WA_ACCESS_TOKEN` (permanent, keep secret)  
+- `WA_PHONE_NUMBER_ID`  
+- `WA_VERIFY_TOKEN`  
+- `CORS_ORIGINS`, `RATE_LIMIT_PER_MINUTE`, `MAX_CONTEXT_TOKENS`, etc.
 
 ---
 
-## 🏗️ Architecture & Design Decisions
-
-### **Memory Management**
-Instead of just sending a raw chat history, Disha uses a multi-level memory system:
-1. **User Profile**: Structured facts (Name, Age, Gender, Weight, Height, Primary Goals).
-2. **Semantic Memories**: LLM-extracted facts about health conditions, allergies, and lifestyle patterns.
-3. **Conversation History**: Recent messages managed with a token-capped sliding window (approx. 8,000 tokens context).
-
-### **Clean Architecture**
-The project follows a modular service-oriented architecture:
-- **Orchestration Layer**: `ChatOrchestrator` manages the complex flow between LLM, Memory, and Protocols.
-- **Service Layer**: Dedicated services for `MemoryManager`, `ProtocolMatcher`, `ContextBuilder`, and `OnboardingService`.
-- **API Layer**: Clean FastAPI routes with Pydantic validation and global error handling.
-- **Frontend**: Modular ES6 JavaScript with a clean separation of UI rendering and API logic.
-
-### **Database Choice: MongoDB**
-I chose MongoDB for its flexibility with document schemas. As an AI coach evolves, the "memories" we store about a user will change. Document-based storage handles this much better than strict relational schemas.
-
-### **LLM abstraction**
-The backend uses a Factory Pattern for LLM providers. This allows the system to switch between Gemini, OpenAI, or Azure OpenAI seamlessly via environment variables without changing core logic.
-
-### **Prompt Engineering**
-The system prompt defines "Disha" as a warm, Indian AI health coach. It includes specific instructions on tone, empathy, and safety (NEVER giving emergency advice).
+## WhatsApp Bot (Live, not marketplace-published)
+- Real WhatsApp Cloud API webhook wired to `/api/webhooks/whatsapp`.  
+- Uses permanent access token from env; verify token from env.  
+- Interactive buttons map from `[CTA: ...]` tags.  
+- Testing: add your phone as an allowed recipient in Meta, then send “Hi” to the configured number.  
+- Not published to marketplace yet; only allowed/test numbers can message the bot.
 
 ---
 
-## 🛠️ Tech Stack
-
-- **Backend**: FastAPI (Python), Motor (Async MongoDB), Pydantic V2
-- **Frontend**: Vanilla JavaScript, HTML5, CSS3 (No heavy frameworks for speed and simplicity)
-- **Database**: MongoDB 7.0
-- **AI/LLM**: Google Generative AI (Gemini), OpenAI SDK, Tiktoken
-- **Infrastructure**: Docker, Docker Compose
-
----
-
-## 📋 API Documentation
-
-Once the backend is running, you can access the interactive Swagger docs at:
-- `http://localhost:8000/docs`
-
-### Key Endpoints:
-- `POST /api/messages`: Send a message and get a coached response.
-- `GET /api/messages`: Fetch message history with cursor-based pagination.
-- `GET /api/users/{user_id}`: Retrieve user profile and onboarding state.
-- `GET /health`: Check system and database status.
+## Deployment Notes
+1) Backend: Render/Railway/Fly/etc. Start command: `uvicorn app.main:app --host 0.0.0.0 --port 8000`.  
+2) Env vars: set all secrets in host env (no secrets in repo).  
+3) Webhook: set callback to `https://<your-backend-domain>/api/webhooks/whatsapp`; verify token matches env.  
+4) DB: Use MongoDB Atlas (recommended).  
+5) Frontend: host statically (Vercel/Netlify/Render static); set API base URL to backend.  
+6) Health check: `/health`; docs: `/docs`.
 
 ---
 
-## 🔮 Future Enhancements (If I had more time)
-
-1. **Streaming Responses**: Implement Server-Sent Events (SSE) for "typing" effect as tokens are generated.
-2. **Semantic Search for Memories**: Use Vector Embeddings (MongoDB Atlas Vector Search) for memory retrieval instead of simple category/recency filters.
-3. **Voice Interface**: Add speech-to-text and text-to-speech for hands-free coaching.
-4. **Integration with Health Devices**: Connect with Apple Health or Google Fit to fetch real-time activity data.
-5. **Multilingual Support**: Support for Hindi, Tamil, and other regional languages using LLM translation capabilities.
+## Testing
+- Manual: Onboarding flow (name-first, gender, age, goal with “Other”), WhatsApp CTA buttons, long messages, rate limit.  
+- Suggested (time-permitting): add pytest for onboarding extractors and chat happy-path.
 
 ---
 
-## 📄 License
-This project is for assignment purposes.
+## Future Enhancements
+- Streaming responses (SSE).  
+- Semantic memory with embeddings.  
+- Redis caching for protocol/memory lookups.  
+- Additional languages and transliteration.  
+- Proactive nudges and analytics.
 
-**Developed with ❤️ for Curelink.**
+---
+
+## License
+For assignment purposes.
